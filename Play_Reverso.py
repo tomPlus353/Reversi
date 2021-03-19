@@ -1,5 +1,6 @@
 from Reverso import Game, Player, ChessBoard, Piece
 from random import randint
+from blender import bcolors
 
 def pvp():
 	#get boardsize
@@ -10,7 +11,7 @@ def pvp():
 	
 
 	while True: 		#One loop = One game
-		print('Let\'s play Reversi!')
+		print(f"{bcolors.WARNING}Let\'s play Reversi!{bcolors.ENDC}")
 		while True:
 			try:
 				size = int(input('\nHow big(long and wide) do you want the board to be? \ne.g. for 8*8 board enter "8".\n'))
