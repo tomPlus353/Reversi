@@ -1,5 +1,6 @@
 from random import randint
 from copy import deepcopy
+from blender import bcolors
 class ChessBoard:
 
 	def __init__(self, size = 8): #note, size must even
@@ -44,14 +45,14 @@ class ChessBoard:
 				#print(rowno,columnno)
 				if (rowno,columnno) in self.pieces:
 					if self.pieces[(rowno,columnno)].color == 'black': 
-						self.board[rowno][columnno] = '⚫'
+						self.board[rowno][columnno] = '白'
 					else:
-						self.board[rowno][columnno] = '⚪'
+						self.board[rowno][columnno] = '黒'
 
 	def printBoard(self):
 		self.refreshBoard()
 		for row in self.board: 
-			print("".join(row))
+			print(" ".join(row))
 
 	def printPlayerOptions(self, availableMoves):
 		self.refreshBoard()
@@ -61,7 +62,7 @@ class ChessBoard:
 			copy[x][y] = str(counter)
 			counter += 1
 		for row in copy:
-			print("".join(row))
+			print(" ".join(row))
 		print('Is copy the same as self.board?', copy == self.board)
 
 
@@ -188,9 +189,8 @@ class Player:
 	def getScore(self, board): # updates score in self and returns that score
 		score = 0
 		for piece in board.pieces:
-			if board.pieces[piece] == self.color:
+			if board.pieces[piece].color == self.color:
 				score += 1
-
 		self.score = score
 		return self.score
 
@@ -228,7 +228,6 @@ class Game:
 
 	def gameplay(self):
 		#print board 
-	######NOTE get available moves and have the user select them.########################
 		#get player's choice
 		#test if valid
 		#Execute if so
@@ -257,7 +256,7 @@ class Game:
 								break
 						except ValueError:
 							continue
-					self.player2.makeMove(move, self.board)
+					self.player1.makeMove(move, self.board)
 			elif turn == 'player 2':
 				availableMoves = self.board.getAvailableMoves(self.player2)
 				if len(availableMoves) == 0:
@@ -286,20 +285,3 @@ class Game:
 					turn = 'player 2'
 				else:
 					turn = 'player 1'
-
-
-
-
-
-
-
-
-
-
-
-	
-		
-		
-		
-		
-		
