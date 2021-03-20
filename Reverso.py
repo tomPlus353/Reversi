@@ -171,6 +171,24 @@ class Player:
 		self.type = type
 		self.score = int #NOTE: never actually call this. Use getScore instead
 
+	def getMove(self,board):
+		availableMoves = board.getAvailableMoves(self)
+		if len(availableMoves) == 0:
+			print(f"{self.color} has no moves!")
+		else:
+			board.printPlayerOptions(availableMoves)
+		while True:
+			choice = input(f'Enter the number of your move. ({1} - {len(availableMoves)})')
+			try:
+				numChoice = int(choice) - 1
+				if numChoice in range(len(availableMoves)):
+					move = availableMoves[numChoice]
+					break
+			except ValueError:
+				continue
+		self.makemove(move, board)
+
+
 	def makeMove(self, position, board):
 		validList = board.isValidMove(position, self)
 		if validList != False: #self=player
@@ -183,7 +201,7 @@ class Player:
 				else:
 					board.pieces[(x,y)].color = self.color
 		else:
-			return False # user should be prompted for other move
+			self.getMove(board) # user should be prompted for other move
 			
 
 	def getScore(self, board): # updates score in self and returns that score
@@ -193,6 +211,13 @@ class Player:
 				score += 1
 		self.score = score
 		return self.score
+
+class randomAI(Player):
+	def __init__(self, color, type='AI'):
+		super().__init__(self, color, type)
+
+	def getMove(self, board)
+
 
 class Game:
 
@@ -228,6 +253,7 @@ class Game:
 
 	def gameplay(self):
 		#print board 
+	######NOTE get available moves and have the user select them.########################
 		#get player's choice
 		#test if valid
 		#Execute if so
@@ -242,37 +268,9 @@ class Game:
 			print(f"It is {turn}'s turn")
 			#player takes their turn
 			if turn == 'player 1':
-				availableMoves = self.board.getAvailableMoves(self.player1) #BUG HERE
-				if len(availableMoves) == 0:
-					print(f"{self.player1} has no moves!")
-				else:
-					self.board.printPlayerOptions(availableMoves)
-					while True:
-						choice = input(f'Enter the number of your move. ({1} - {len(availableMoves)})')
-						try:
-							numChoice = int(choice) - 1
-							if numChoice in range(len(availableMoves)):
-								move = availableMoves[numChoice]
-								break
-						except ValueError:
-							continue
-					self.player1.makeMove(move, self.board)
+				player2.getMove(board)
 			elif turn == 'player 2':
-				availableMoves = self.board.getAvailableMoves(self.player2)
-				if len(availableMoves) == 0:
-					print(f"{self.player2} has no moves!")
-				else:
-					self.board.printPlayerOptions(availableMoves)
-					while True:
-						choice = input(f'Enter the number of your move. ({1} - {len(availableMoves)})')
-						try:
-							numChoice = int(choice) - 1
-							if numChoice in range(len(availableMoves)):
-								move = availableMoves[numChoice]
-								break
-						except ValueError:
-							continue
-					self.player2.makeMove(move, self.board)
+				player2.getMove(board)
 			else:
 				raise ArithmeticError
 			self.board.printBoard()
