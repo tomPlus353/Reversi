@@ -216,8 +216,14 @@ class randomAI(Player):
 	def __init__(self, color, type='AI'):
 		super().__init__(self, color, type)
 
-	def getMove(self, board)
-
+	def getMove(self, board):
+		availableMoves = board.getAvailableMoves(self)
+		if len(availableMoves) == 0:
+			print(f"{self.color} has no moves!")
+		else:
+			board.printPlayerOptions(availableMoves)
+			move = availableMoves[randint(0,len(availableMoves)-1)] # minus one because randint is INCLUSIVE
+			self.makemove(move, board)
 
 class Game:
 
