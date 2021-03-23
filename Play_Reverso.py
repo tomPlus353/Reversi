@@ -1,42 +1,44 @@
-from Reverso import Game, Player, ChessBoard, Piece
+from Reverso import Game, Player, RandomComputerPlayer, MinimaxPlayer, ChessBoard, Piece
 from random import randint
-from blender import bcolors
+#from blender import bcolors
 
 def announceWinner(winner, game):
 	if winner == 'player 1':
-			print('player 1 is the winner!')
-			print(f"{game.player1.color}/Player 1 score: {game.player1.getScore(game.board)}")
-			print(f"{game.player2.color}/Player 2 score: {game.player2.getScore(game.board)}")
-		elif winner == 'player 2':
-			print('player2 is the winner!')
-			print(f"{game.player1.color}/Player 1 score: {game.player1.getScore(game.board)}")
-			print(f"{game.player2.color}/Player 2 score: {game.player2.getScore(game.board)}")
-		elif winner == 'tie':
-			print('It\'s a tie!')
-			print(f"{game.player1.color}/Player 1 score: {game.player1.getScore(game.board)}")
-			print(f"{game.player2.color}/Player 2 score: {game.player2.getScore(game.board)}")
+		print('player 1 is the winner!')
+		print(f"{game.player1.color}/Player 1 score: {game.player1.getScore(game.board)}")
+		print(f"{game.player2.color}/Player 2 score: {game.player2.getScore(game.board)}")
+	elif winner == 'player 2':
+		print('player2 is the winner!')
+		print(f"{game.player1.color}/Player 1 score: {game.player1.getScore(game.board)}")
+		print(f"{game.player2.color}/Player 2 score: {game.player2.getScore(game.board)}")
+	elif winner == 'tie':
+		print('It\'s a tie!')
+		print(f"{game.player1.color}/Player 1 score: {game.player1.getScore(game.board)}")
+		print(f"{game.player2.color}/Player 2 score: {game.player2.getScore(game.board)}")
 
 def getPlayer(color, type):
 	if type == 'human':
 		return Player(color)
-	difficulties = ['easy', 'normal', 'hard']
-	diff == getDifficulty(difficulties)
-	if diff == difficulties[0]:
-		return randomAI(color)
-	elif diff == difficulties[1]:
-		return smartAI(color)
-	elif diff == difficulties[2]:
-		return 'class pending'
+	else:
+		difficulties = ['\n 1. easy\n', '2. normal\n', '3. hard\n']
+		diff = getDifficulty(difficulties)
+		if diff == difficulties[0]:
+			return MinimaxPlayer(color) # default difficulty of 3
+		elif diff == difficulties[1]:
+			return MinimaxPlayer(color, 6) #overwrites default difficulty 3 becomes 6
+		elif diff == difficulties[2]:
+			return MinimaxPlayer(color, 10) 
 
 
 def getDifficulty(difficulties):
 	while True:
 		try:
-			choice = int(input(f"Choose your difficulty: {"\n".join(difficulties)}\n")) - 1
-			if choice in range(len(difficulties))
+			choice = int(input(f"Choose your difficulty: {''.join(difficulties)}"))
+			choice = choice - 1
+			if choice in range(len(difficulties)):
+				return difficulties[choice]
 		except ValueError:
 			continue
-	return difficulties[choice]
 
 def play():
 	#get boardsize
@@ -44,23 +46,27 @@ def play():
 	#initialize game
 	#enter the game's main loop
 	#get winner
-	modes = ['1. player vs player',
-	'2. player vs computer',
-	'3. computer vs computer']
+	modes = ['\n1. player vs player\n',
+	'2. player vs computer\n',
+	'3. computer vs computer\n']
 	modeTuples = [('human','human'),('human','ai'),('ai','ai')]
 	while True: 		#One loop = One game
-		print(f"{bcolors.WARNING}Let\'s play Reversi!{bcolors.ENDC}")
+		print(f"Let\'s play Reversi!")
 		while True:
 			try:
 				size = int(input('\nHow big(long and wide) do you want the board to be? \ne.g. for 8*8 board enter "8".\n'))
-				if size > 4 and size % 2 == 0:
-					mode = modeTuples[int(input(f"Select mode:{'\n'.join(modes)}")) - 1]
+				if size >= 4 and size % 2 == 0:
+					modeChoice = int(input(f"Select mode:{''.join(modes)}")) - 1
+					if modeChoice in range(len(modes)):
+						mode = modeTuples[modeChoice]
+						break
 			except ValueError:
+				print('Invalid number')
 				continue
 		p1color = ['black','white'][randint(0,1)]
 		p2color = 'black' if p1color == 'white' else 'white'
-		player1 = getPlayer(p1color, mode[0])
-		player2 = getPlayer(p2color, mode[1])
+		player1 = getPlayer(p1color, mode[0]) # human or ai
+		player2 = getPlayer(p2color, mode[1]) # human or ai
 		print(f'Player 1, ({player1.type}) is {player1.color}')
 		print(f'Player 2, ({player2.type}) is {player2.color}')
 
