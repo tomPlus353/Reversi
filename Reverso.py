@@ -1,6 +1,6 @@
 from random import randint
 from copy import deepcopy
-from blender import bcolors
+#from blender import bcolors
 import math
 class ChessBoard:
 
@@ -73,6 +73,26 @@ class ChessBoard:
 	def getMidpoints(self, size):
 		halfway = int((size - 2) / 2)
 		return [(halfway,halfway),(halfway,1+halfway),(1+halfway,halfway),(1+halfway,1+halfway)]
+	
+	"""def isValidMove(self, position, player): #self = board
+		#Condition 1: is on the board!
+		if position not in self.possiblePositions:
+			return None
+		
+		#Condition 2: square not occupied already
+		if position in self.pieces: #piece = unique position
+			return None
+		#Condition 3a: is adjacent to an enemy piece AND
+		#Condition 3b: will result in enemy squares acquired
+		#i.e. at the end of row/column there is piece of the same color.
+		#note: [(x,y) for x,y in self.pieces] >> list of tuples! i.e. x,y refer to the tuple KEY not key and value
+		#position has cleared 3a now test 3b
+		flippablePositions = self.getFlippable(position,player)
+		#print('flippable positions after return within isValidMove:',flippablePositions)
+		if len(flippablePositions) > 0: # will return None if no flippable postions
+			return flippablePositions
+		else:
+			return None"""
 		
 	def getAvailableMoves(self, player):
 		#Condition 1: is on the board!
@@ -94,8 +114,12 @@ class ChessBoard:
 
 	def getFlippable(self, position, player): # returns a list of postions that will be flipped given a move(which is ON the board and in an EMPTY square.
 		flippablePositions = []
-		myX=position[0]
-		myY=position[1]
+		try:
+			myX=position[0]
+			myY=position[1]
+		except:
+			print(position)
+			input('Key error 0')
 		#1. find the first piece in a line from position
 		#2. get a list of the positions BETWEEN first piece
 		#3. add to a list of positions to be flipped.		
@@ -171,6 +195,7 @@ class Player:
 					raise ValueError
 				else:
 					board.pieces[(x,y)].color = self.color
+
 		else:
 			print('Error: printing flipList and position variables', flipList, position)
 			board.printBoard()
@@ -188,6 +213,7 @@ class RandomComputerPlayer(Player):
 	def __init__(self, color, type='AI'):
 		super().__init__(color, type)
 
+
 	def getMove(self, board, game = None): #optional game argument for Minimax
 		availableMoves = board.getAvailableMoves(self)
 		if len(availableMoves) == 0:
@@ -197,8 +223,12 @@ class RandomComputerPlayer(Player):
 			self.makeMove(move, board)
 
 class MinimaxPlayer(Player):
-	def __init__(self, color, type='AI'):
-		super().__init__(color, type)
+	def __init__(self, color, type='AI', difficulty=3):
+		self.color = color
+		self.type = type
+		self.score = int #NOTE: never actually call this. Use getScore instead
+		self.depth = difficulty
+
 
 	def getMove(self, board, game):
 		availableMoves = board.getAvailableMoves(self)
@@ -206,80 +236,95 @@ class MinimaxPlayer(Player):
 			print(f"{self.color} has no moves!")
 		else:
 			simGame = deepcopy(game)
-			move = self.minimax(simGame, self.color)
+			best = self.minimax(simGame, self.color, self.depth)
 			del simGame	
+			move = best['position']
 			self.makeMove(move, board)
 
-	def minimax(self, simGame, currentColor):
+	def minimax(self, simGame, currentColor, depth):
 		maxPlayer = self.color #constantly remains the current player
 		otherColor = 'black' if currentColor == 'white' else 'white'
 		#so we have three colours: maxPlayer, playercolor, othercolor
-
-		#1. first we want to check if the previous move is a winner
-		# this is our base case
-		#we refer to otherColor to get previous move
-		print(simGame.checkWinner(),simGame.winner, simGame.player1.getScore(simGame.board),simGame.player2.getScore(simGame.board), currentColor, otherColor) #DEBUGGING
-		if simGame.checkWinner():
-		#if simGame.winner == otherColor: #this does not tell us if otherColor is maxplayer or not
-			if maxPlayer == otherColor:
-				return {'position': None, 'score': 1 * (simGame.board.getEmpty() + 1)}
-			else:
-				return {'position': None, 'score': -1 * (simGame.board.getEmpty() + 1)}
-		if simGame.board.getEmpty() == 0 or simGame.winner == 'tie':
-				return {'position': None, 'score': 0}
-
+		
 		#2. initialize dictionaries to keep score
 		if currentColor == maxPlayer:
 			best = {'position': None, 'score': -math.inf}
 		else:
 			best = {'position': None, 'score': math.inf}
+
+
+		#1. first we want to check if the previous move is a winner
+		# this is our base case
+		#we refer to otherColor to get previous move
+		#print(simGame.checkWinner(),simGame.winner, simGame.player1.getScore(simGame.board),simGame.player2.getScore(simGame.board), currentColor, otherColor) #DEBUGGING
+		simGame.checkWinner()
+		#if simGame.winner == otherColor: #this does not tell us if otherColor is maxplayer or not
+		if simGame.winner == simGame.getPlayerByColor(otherColor).name or depth == 0:
+			if otherColor == maxPlayer:
+				#print({'position': None, 'score': 1 * (simGame.getPlayerByColor(otherColor).getScore(simGame.board)-simGame.getPlayerByColor(currentColor) + 1)})
+				#input(f'Return 1')
+				return {'position': None, 'score': 1 * (simGame.getPlayerByColor(otherColor).getScore(simGame.board)-simGame.getPlayerByColor(currentColor).getScore(simGame.board))}
+			else:
+				#print({'position': None, 'score': -1 * (simGame.getPlayerByColor(otherColor).getScore(simGame.board)-simGame.getPlayerByColor(currentColor) + 1)})
+				#input(f'Return 1b')
+				return {'position': None, 'score': -1 * (simGame.getPlayerByColor(otherColor).getScore(simGame.board)-simGame.getPlayerByColor(currentColor).getScore(simGame.board))}
+		elif simGame.board.getEmpty() == 0 or simGame.winner == 'tie':
+				#print({'position': None, 'score': 0})
+				#input(f'Return 2')
+				return {'position': None, 'score': 0}
+
+		
 		
 		#3 loop
-		if len(simGame.board.getAvailableMoves(simGame.getPlayerByColor(currentColor))) > 0:
-			for availableMove in simGame.board.getAvailableMoves(simGame.getPlayerByColor(currentColor)):
-				#input(f'available moves: {simGame.board.getAvailableMoves(simGame.getPlayerByColor(currentColor))}')
-				# step 0: save the pieces so we don't have to reflip them
-				previousPieces = simGame.board.pieces
-				# step 1: make a move, try that spot
-				simGame.getPlayerByColor(currentColor).makeMove(availableMove, simGame.board) #we get the current player object, but player data remains static throughout the game.
-				# step 2: recurse using minimax to simulate a game after making that move
-				simScore = self.minimax(simGame, otherColor)
-				# step 3: undo the move -> it will have to recurse here one more time for everytime you call minimax
-					#a. remove piece from board.
-					#b. unflip the pieces
-				simGame.board.pieces = previousPieces
-					#c. reset winner in case a player won
-				simGame.winner == None
-					#d. reset the dictionary position 
-					# WHY? -> so we can evaluate that move vs the score coming from that move.
-				simScore['position'] = availableMove 
-				# step 4: update the dictionaries if necessary
-				if currentColor == maxPlayer: #maximize
-					if simScore['score'] > best['score']: # on the first run best score will be -infinity
-						best = simScore
-				else: #minimize the other player
-					if simScore['score'] < best['score']:
-						best = simScore
-			else: #player passes if they have no moves
-				#same as above but no makeMove
-				previousPieces = simGame.board.pieces
-				simScore = self.minimax(simGame, otherColor)
-				simGame.board.pieces = previousPieces
-				simGame.winner == None
-				simScore['position'] = None
-				if currentColor == maxPlayer: #maximize
-					if simScore['score'] > best['score']: # on the first run best score will be -infinity
-						best = simScore
-				else: #minimize the other player
-					if simScore['score'] < best['score']:
-						best = simScore
+		for availableMove in simGame.board.getAvailableMoves(simGame.getPlayerByColor(currentColor)):
+			#input(f'available moves: {simGame.board.getAvailableMoves(simGame.getPlayerByColor(currentColor))}')
+			# step 0: save the pieces so we don't have to reflip them
+			previousPieces = deepcopy(simGame.board.pieces)
+			# step 1: make a move, try that spot
+			simGame.getPlayerByColor(currentColor).makeMove(availableMove, simGame.board) #we get the current player object, but player data remains static throughout the game.
+			# step 2: recurse using minimax to simulate a game after making that move
+			simScore = self.minimax(simGame, otherColor, depth-1)
+			# step 3: undo the move -> it will have to recurse here one more time for everytime you call minimax
+				#a. remove piece from board.
+				#b. unflip the pieces
+			simGame.board.pieces = deepcopy(previousPieces)
+				#c. reset winner in case a player won
+			simGame.winner == None
+				#d. reset the dictionary position 
+				# WHY? -> so we can evaluate that move vs the score coming from that move.
+			simScore['position'] = availableMove 
+			# step 4: update the dictionaries if necessary
+			if currentColor == maxPlayer: #maximize
+				if simScore['score'] > best['score']: # on the first run best score will be -infinity
+					best = simScore
+			else: #minimize the other player
+				if simScore['score'] < best['score']:
+					best = simScore
+		# else: #player passes if they have no moves
+		# 	#same as above but no makeMove
+		# 	previousPieces = deepcopy(simGame.board.pieces)
+		# 	simScore = self.minimax(simGame, otherColor, depth-1)
+		# 	simGame.board.pieces = deepcopy(previousPieces)
+		# 	simGame.winner = None
+		# 	simScore['position'] = 'pass'
+		# 	if currentColor == maxPlayer: #maximize
+		# 		if simScore['score'] > best['score']: # on the first run best score will be -infinity
+		# 			best = simScore
+		# 	else: #minimize the other player
+		# 		if simScore['score'] < best['score']:
+		# 			best = simScore
+		#input(f'return 3{best}')
 		return best
+
+
 
 class Game:
 	def __init__(self,size,player1,player2): #players pre-initialized
 		self.board = ChessBoard(size)
 		self.player1 = player1
+		self.player1.name = 'player 1'
 		self.player2 = player2
+		self.player2.name = 'player 2'
 		self.winner = None
 
 	def getPlayerByColor(self, color):
