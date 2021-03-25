@@ -1,7 +1,7 @@
 # Reversi
 Creating a python reversi with customizable board size and a choice of players
 
-Reversi is also called Othello. In some cases I refer to it as "reverso" because this name makes more sense to me
+Reversi is also called Othello. In some cases I refer to it as "reverso" because growing up I played a version in which it was called reverso and the name stuck with me.
 
 Tasks completed so far.
 
@@ -26,8 +26,3 @@ Further improvements to add
 2. Alpha/beta pruning to conserve computing power, allowing for more depth.
 3. Refine algorithm through trial and error.
 4. As an advanced step, use machine learning to create a model the computer can reference.
-
-
-
-
-
