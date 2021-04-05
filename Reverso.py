@@ -1,6 +1,5 @@
-from random import randint
+from random import randint, choice
 from copy import deepcopy
-#from blender import bcolors
 import math
 class ChessBoard:
 
@@ -11,6 +10,8 @@ class ChessBoard:
 		self.size = size
 		self.possiblePositions = [(x,y) for x in range(self.size) for y in range(self.size)]
 		self.pieces = {}
+		self.edges = self.getEdges()
+		self.corners = self.getCorners()
 		self.midPoints = self.getMidpoints(size)
 		counter = 1
 		for m in self.midPoints:
@@ -74,27 +75,23 @@ class ChessBoard:
 		halfway = int((size - 2) / 2)
 		return [(halfway,halfway),(halfway,1+halfway),(1+halfway,halfway),(1+halfway,1+halfway)]
 	
-	"""def isValidMove(self, position, player): #self = board
-		#Condition 1: is on the board!
-		if position not in self.possiblePositions:
-			return None
-		
-		#Condition 2: square not occupied already
-		if position in self.pieces: #piece = unique position
-			return None
-		#Condition 3a: is adjacent to an enemy piece AND
-		#Condition 3b: will result in enemy squares acquired
-		#i.e. at the end of row/column there is piece of the same color.
-		#note: [(x,y) for x,y in self.pieces] >> list of tuples! i.e. x,y refer to the tuple KEY not key and value
-		#position has cleared 3a now test 3b
-		flippablePositions = self.getFlippable(position,player)
-		#print('flippable positions after return within isValidMove:',flippablePositions)
-		if len(flippablePositions) > 0: # will return None if no flippable postions
-			return flippablePositions
-		else:
-			return None"""
-		
-	def getAvailableMoves(self, player):
+	def getEdges(self):
+		edges = []
+		high = self.size -1
+		poss = self.possiblePositions
+		for i in poss:
+			if poss[0] == 0 or poss[0] == high:
+				edges.append(poss)
+			elif poss[1] == 0 or poss[1] == high:
+				edges.append(poss)
+		return edges
+
+	def getCorners(self):
+		low = 0
+		high = self.size-1
+		return [(low,low), (high,high), (low,high), (high,low)]
+
+	def getAvailableMoves(self, color):
 		#Condition 1: is on the board!
 		#Condition 2: square not occupied already
 		emptySquares = [t for t in self.possiblePositions if t not in self.pieces]
@@ -105,21 +102,17 @@ class ChessBoard:
 		#note: [(x,y) for x,y in self.pieces] >> list of tuples! i.e. x,y refer to the tuple KEY not key and value
 		for square in emptySquares:
 			#print(square)
-			if len(self.getFlippable(square,player)) > 0:
+			if len(self.getFlippable(square,color)) > 0:
 				availableMoves.append(square)
 		return availableMoves
 
 	def addPiece(self, piece): # ONLY called if move passes availableMoves
 		self.pieces[piece.position] = piece # we use position instead of ID since position does not change and will be used alot.
 
-	def getFlippable(self, position, player): # returns a list of postions that will be flipped given a move(which is ON the board and in an EMPTY square.
+	def getFlippable(self, position, color): # returns a list of postions that will be flipped given a move(which is ON the board and in an EMPTY square.
 		flippablePositions = []
-		try:
-			myX=position[0]
-			myY=position[1]
-		except:
-			print(position)
-			input('Key error 0')
+		myX = position[0]
+		myY = position[1]
 		#1. find the first piece in a line from position
 		#2. get a list of the positions BETWEEN first piece
 		#3. add to a list of positions to be flipped.		
@@ -133,10 +126,10 @@ class ChessBoard:
 				#print(squarePos)
 				if squarePos in self.pieces:
 					square = self.pieces[squarePos] # extracts copy of the piece object
-					if square.color == player.color:
+					if square.color == color:
 						ally = squarePos # this may prove useful when designing an AI player
 						break
-					elif square.color != player.color:
+					elif square.color != color:
 						enemyList.append(squarePos)
 				else: #either a blank square OR off the edge of the board.
 					break  #stops counting
@@ -168,7 +161,7 @@ class Player:
 		self.score = int #NOTE: never actually call this. Use getScore instead
 
 	def getMove(self, board, game=None): #optional argument game is only for minimax
-		availableMoves = board.getAvailableMoves(self)
+		availableMoves = board.getAvailableMoves(self.color)
 		if len(availableMoves) == 0:
 			print(f"{self.color} has no moves!")
 		else:
@@ -185,7 +178,7 @@ class Player:
 			self.makeMove(move, board)
 
 	def makeMove(self, position, board):
-		flipList = board.getFlippable(position, self)
+		flipList = board.getFlippable(position, self.color)
 		if len(flipList) > 0: #should always be more than 0, we already checked this 'position' with getFlippable
 			#updates 1)flip board.pieces 2)flip pieces themselves 
 			#3)add the actual new piece to board.pieces 4)update the physical board? -> no, that will be updated during print.
@@ -195,7 +188,6 @@ class Player:
 					raise ValueError
 				else:
 					board.pieces[(x,y)].color = self.color
-
 		else:
 			print('Error: printing flipList and position variables', flipList, position)
 			board.printBoard()
@@ -209,13 +201,31 @@ class Player:
 		self.score = score
 		return self.score
 
+	def getAdjustedScore(self, board): # for minimax, to take into account strength of edges and corners, especially in the early and middle game
+		score = 0
+		remainingMoves = len([i for i in board.possiblePositions if i not in board.pieces])
+		endGame = True if remainingMoves <= int(len(board.possiblePositions)/3) else False
+		for piece in board.pieces:
+			if board.pieces[piece].color == self.color:
+				score += 1 if endGame == False else 2
+				if piece in board.corners:
+					score += 8 if endGame == False else 2 # 9x the score for a corner outside of endgame/ same score in endgame
+				elif piece in board.edges:
+					score += 4 if endGame == False else 2 # 5x the score for an edge outside of endgame/ same score in endgame
+		#account for denying opponent moves
+		ownMoves = len(board.getAvailableMoves(self.color)) #this provides some benchmark to judge for opponents moves.
+		opponentColor = 'black' if self.color == 'white' else 'black'
+		opponentMoves = len(board.getAvailableMoves(opponentColor))
+		score += (ownMoves - opponentMoves) * 2 #reduces score if opponent has alot of moves and increases score if they have few
+		return score
+
 class RandomComputerPlayer(Player):
 	def __init__(self, color, type='AI'):
 		super().__init__(color, type)
 
 
 	def getMove(self, board, game = None): #optional game argument for Minimax
-		availableMoves = board.getAvailableMoves(self)
+		availableMoves = board.getAvailableMoves(self.color)
 		if len(availableMoves) == 0:
 			print(f"{self.color} has no moves!")
 		else:
@@ -231,15 +241,22 @@ class MinimaxPlayer(Player):
 
 
 	def getMove(self, board, game):
-		availableMoves = board.getAvailableMoves(self)
+		availableMoves = board.getAvailableMoves(self.color)
 		if len(availableMoves) == 0:
 			print(f"{self.color} has no moves!")
+		elif len(availableMoves) == 1:
+			move = availableMoves[0]
+			self.makeMove(move, board)
 		else:
 			simGame = deepcopy(game)
 			best = self.minimax(simGame, self.color, self.depth)
 			del simGame	
 			move = best['position']
+			if type(move) != tuple: #if it cannot find the next move
+				move = choice(availableMoves)
+				input(f"{self.color} can't find next move out of {len(availableMoves)}")
 			self.makeMove(move, board)
+
 
 	def minimax(self, simGame, currentColor, depth):
 		maxPlayer = self.color #constantly remains the current player
@@ -251,33 +268,24 @@ class MinimaxPlayer(Player):
 			best = {'position': None, 'score': -math.inf}
 		else:
 			best = {'position': None, 'score': math.inf}
-
-
-		#1. first we want to check if the previous move is a winner
-		# this is our base case
-		#we refer to otherColor to get previous move
-		#print(simGame.checkWinner(),simGame.winner, simGame.player1.getScore(simGame.board),simGame.player2.getScore(simGame.board), currentColor, otherColor) #DEBUGGING
+		
 		simGame.checkWinner()
 		#if simGame.winner == otherColor: #this does not tell us if otherColor is maxplayer or not
 		if simGame.winner == simGame.getPlayerByColor(otherColor).name or depth == 0:
 			if otherColor == maxPlayer:
-				#print({'position': None, 'score': 1 * (simGame.getPlayerByColor(otherColor).getScore(simGame.board)-simGame.getPlayerByColor(currentColor) + 1)})
+				#print({'position': None, 'score': 1 * (simGame.getPlayerByColor(otherColor).getAdjustedScore(simGame.board)-simGame.getPlayerByColor(currentColor) + 1)})
 				#input(f'Return 1')
-				return {'position': None, 'score': 1 * (simGame.getPlayerByColor(otherColor).getScore(simGame.board)-simGame.getPlayerByColor(currentColor).getScore(simGame.board))}
+				return {'position': None, 'score': 1 * (simGame.getPlayerByColor(otherColor).getAdjustedScore(simGame.board)-simGame.getPlayerByColor(currentColor).getAdjustedScore(simGame.board))}
 			else:
-				#print({'position': None, 'score': -1 * (simGame.getPlayerByColor(otherColor).getScore(simGame.board)-simGame.getPlayerByColor(currentColor) + 1)})
+				#print({'position': None, 'score': -1 * (simGame.getPlayerByColor(otherColor).getAdjustedScore(simGame.board)-simGame.getPlayerByColor(currentColor) + 1)})
 				#input(f'Return 1b')
-				return {'position': None, 'score': -1 * (simGame.getPlayerByColor(otherColor).getScore(simGame.board)-simGame.getPlayerByColor(currentColor).getScore(simGame.board))}
+				return {'position': None, 'score': -1 * (simGame.getPlayerByColor(otherColor).getAdjustedScore(simGame.board)-simGame.getPlayerByColor(currentColor).getAdjustedScore(simGame.board))}
 		elif simGame.board.getEmpty() == 0 or simGame.winner == 'tie':
 				#print({'position': None, 'score': 0})
 				#input(f'Return 2')
 				return {'position': None, 'score': 0}
-
-		
-		
 		#3 loop
-		for availableMove in simGame.board.getAvailableMoves(simGame.getPlayerByColor(currentColor)):
-			#input(f'available moves: {simGame.board.getAvailableMoves(simGame.getPlayerByColor(currentColor))}')
+		for availableMove in simGame.board.getAvailableMoves(currentColor):
 			# step 0: save the pieces so we don't have to reflip them
 			previousPieces = deepcopy(simGame.board.pieces)
 			# step 1: make a move, try that spot
@@ -300,23 +308,46 @@ class MinimaxPlayer(Player):
 			else: #minimize the other player
 				if simScore['score'] < best['score']:
 					best = simScore
-		# else: #player passes if they have no moves
-		# 	#same as above but no makeMove
-		# 	previousPieces = deepcopy(simGame.board.pieces)
-		# 	simScore = self.minimax(simGame, otherColor, depth-1)
-		# 	simGame.board.pieces = deepcopy(previousPieces)
-		# 	simGame.winner = None
-		# 	simScore['position'] = 'pass'
-		# 	if currentColor == maxPlayer: #maximize
-		# 		if simScore['score'] > best['score']: # on the first run best score will be -infinity
-		# 			best = simScore
-		# 	else: #minimize the other player
-		# 		if simScore['score'] < best['score']:
-		# 			best = simScore
-		#input(f'return 3{best}')
+
 		return best
 
+class AlphaBetaPlayer(MinimaxPlayer):
 
+	def minimax(self, simGame, currentColor, depth, alpha=float('-inf'), beta=float('inf')):
+		maxPlayer = self.color #constantly remains the current player
+		otherColor = 'black' if currentColor == 'white' else 'white'
+		if currentColor == maxPlayer:
+			best = {'position': None, 'score': -math.inf}
+		else:
+			best = {'position': None, 'score': math.inf}
+		simGame.checkWinner()
+		if simGame.winner == simGame.getPlayerByColor(otherColor).name or depth == 0:
+			if otherColor == maxPlayer:
+				return {'position': None, 'score': 1 * (simGame.getPlayerByColor(otherColor).getAdjustedScore(simGame.board)-simGame.getPlayerByColor(currentColor).getAdjustedScore(simGame.board))}
+			else:
+				return {'position': None, 'score': -1 * (simGame.getPlayerByColor(otherColor).getAdjustedScore(simGame.board)-simGame.getPlayerByColor(currentColor).getAdjustedScore(simGame.board))}
+		elif simGame.board.getEmpty() == 0 or simGame.winner == 'tie':
+				return {'position': None, 'score': 0}
+		for availableMove in simGame.board.getAvailableMoves(currentColor):
+			previousPieces = deepcopy(simGame.board.pieces)
+			simGame.getPlayerByColor(currentColor).makeMove(availableMove, simGame.board) #we get the current player object, but player data remains static throughout the game.
+			simScore = self.minimax(simGame, otherColor, depth-1, alpha, beta)
+			simGame.board.pieces = deepcopy(previousPieces)
+			simGame.winner == None
+			simScore['position'] = availableMove 
+			if currentColor == maxPlayer: #maximize
+				if simScore['score'] > best['score']: # on the first run best score will be -infinity
+					best = simScore
+					alpha = max(alpha, best['score'])
+					if beta <= alpha:
+						break
+			else: #minimize the other player
+				if simScore['score'] < best['score']:
+					best = simScore
+					beta = min(beta, best['score'])
+					if beta <= alpha:
+						break
+		return best
 
 class Game:
 	def __init__(self,size,player1,player2): #players pre-initialized
@@ -339,8 +370,8 @@ class Game:
 		  #Condition 2: neither p1 or p2 have an available move
 		  #Actually condition 2 covers condition one
 		#2. check who won
-		p1Moves = self.board.getAvailableMoves(self.player1)
-		p2Moves = self.board.getAvailableMoves(self.player2)
+		p1Moves = self.board.getAvailableMoves(self.player1.color)
+		p2Moves = self.board.getAvailableMoves(self.player2.color)
 		if len(p1Moves) == 0 and len(p2Moves) == 0:
 			#game has ended and now we just count the scores
 			if self.player1.getScore(self.board) > self.player2.getScore(self.board):
