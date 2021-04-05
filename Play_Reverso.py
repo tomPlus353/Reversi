@@ -1,6 +1,6 @@
-from Reverso import Game, Player, RandomComputerPlayer, MinimaxPlayer, ChessBoard, Piece
+from Reverso import Game, Player, RandomComputerPlayer, MinimaxPlayer, AlphaBetaPlayer, ChessBoard, Piece
 from random import randint
-#from blender import bcolors
+from time import perf_counter
 
 def announceWinner(winner, game):
 	if winner == 'player 1':
@@ -17,32 +17,28 @@ def announceWinner(winner, game):
 		print(f"{game.player2.color}/Player 2 score: {game.player2.getScore(game.board)}")
 
 def getPlayer(color, type):
-	if type == 'human':
-		return Player(color)
-	else:
-		difficulties = ['\n 1. easy\n', '2. normal\n', '3. hard\n']
-		diff = getDifficulty(difficulties)
-		if diff == difficulties[0]:
-			return MinimaxPlayer(color) # default difficulty of 3
-		elif diff == difficulties[1]:
-			return MinimaxPlayer(color, 6) #overwrites default difficulty 3 becomes 6
-		elif diff == difficulties[2]:
-			return MinimaxPlayer(color, 10) 
-
-
-def getDifficulty(difficulties):
-	while True:
-		try:
-			choice = int(input(f"Choose your difficulty: {''.join(difficulties)}"))
-			choice = choice - 1
-			if choice in range(len(difficulties)):
-				return difficulties[choice]
-		except ValueError:
-			continue
+        if type == 'human':
+                return Player(color)
+        else:
+                difficulties = ['\n 1. easy\n', '2. normal\n', '3. hard\n']
+                while True:
+                        try:
+                                choice = int(input(f"Choose your difficulty: {''.join(difficulties)}"))
+                                choice = choice - 1
+                                if choice in range(len(difficulties)):
+                                        break
+                        except ValueError:
+                                continue
+                if choice == 0:
+                        return RandomComputerPlayer(color) 
+                elif choice == 1:
+                        return AlphaBetaPlayer(color) # default difficulty of 3
+                elif choice == 2:
+                        return AlphaBetaPlayer(color, difficulty=5) #Note: MUST pass in explicit keyword argument. This overwrites default difficulty 3 becomes 5
 
 def play():
 	#get boardsize
-	#initialize players 
+	#initialize players
 	#initialize game
 	#enter the game's main loop
 	#get winner
@@ -71,7 +67,10 @@ def play():
 		print(f'Player 2, ({player2.type}) is {player2.color}')
 
 		game = Game(size,player1,player2)
+		start = perf_counter()
 		winner = game.gameplay()
+		timeTaken = perf_counter() - start
+		input(f"Time taken: {timeTaken}")
 		announceWinner(winner, game)
 		while True:
 			yesNo = input('Play again? [y]/[n]')
