@@ -70,7 +70,7 @@ def play():
 		start = perf_counter()
 		winner = game.gameplay()
 		timeTaken = perf_counter() - start
-		input(f"Time taken: {timeTaken}")
+		print(f"Time taken: {timeTaken}")
 		announceWinner(winner, game)
 		while True:
 			yesNo = input('Play again? [y]/[n]')
