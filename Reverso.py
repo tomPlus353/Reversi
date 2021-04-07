@@ -1,5 +1,6 @@
 from random import randint, choice
 from copy import deepcopy
+from time import perf_counter
 import math
 class ChessBoard:
 
@@ -10,6 +11,7 @@ class ChessBoard:
 		self.size = size
 		self.possiblePositions = [(x,y) for x in range(self.size) for y in range(self.size)]
 		self.pieces = {}
+		self.adjacentDict = self.populateAdjacent() # key=position tuple value = list of 8 adjacentSquares
 		self.edges = self.getEdges()
 		self.corners = self.getCorners()
 		self.midPoints = self.getMidpoints(size)
@@ -21,6 +23,16 @@ class ChessBoard:
 				Piece(m, 'black',self)
 			counter += 1
 		#print(self.pieces)
+
+	def populateAdjacent(self):
+		ad = {}
+		for pos in self.possiblePositions:
+			ad[pos] = []
+			for x, y in [(0,1),(1,1),(1,0),(1,-1),(0,-1),(-1,-1),(-1,0),(-1,1)]:
+				square2add = (pos[0] + x, pos[1] + y)
+				if square2add in self.possiblePositions:
+					ad[pos].append(square2add)
+		return ad
 
 	def getEmpty(self):
 		return len([x for x in self.possiblePositions if x not in self.pieces])
@@ -70,7 +82,6 @@ class ChessBoard:
 			print(" ".join(row))
 		del copy
 
-
 	def getMidpoints(self, size):
 		halfway = int((size - 2) / 2)
 		return [(halfway,halfway),(halfway,1+halfway),(1+halfway,halfway),(1+halfway,1+halfway)]
@@ -92,22 +103,41 @@ class ChessBoard:
 		return [(low,low), (high,high), (low,high), (high,low)]
 
 	def getAvailableMoves(self, color):
+		availableMoves = []
 		#Condition 1: is on the board!
 		#Condition 2: square not occupied already
+		#Condition 3a: is adjacent to an enemy piece
 		emptySquares = [t for t in self.possiblePositions if t not in self.pieces]
-		availableMoves = []
-		#Condition 3a: is adjacent to an enemy piece AND
+		start = perf_counter()
+		adjacentEmpty = self.getAdjacentEmpty(color,emptySquares) # this function solves the above conditions in reverse order.
+		timeTaken = perf_counter() - start
+
+		"""
+		DEBUGGING
+		
+		print(f"Time Taken for adjacentEmpty: {timeTaken}")
+		self.printPlayerOptions(adjacentEmpty)
+		input(f"squares produced for {color}: {adjacentEmpty}")
+		"""
+
 		#Condition 3b: will result in enemy squares acquired
 		#i.e. at the end of row/column there is piece of the same color.
 		#note: [(x,y) for x,y in self.pieces] >> list of tuples! i.e. x,y refer to the tuple KEY not key and value
-		for square in emptySquares:
+		for square in adjacentEmpty:
 			#print(square)
 			if len(self.getFlippable(square,color)) > 0:
 				availableMoves.append(square)
 		return availableMoves
 
-	def addPiece(self, piece): # ONLY called if move passes availableMoves
-		self.pieces[piece.position] = piece # we use position instead of ID since position does not change and will be used alot.
+	def getAdjacentEmpty(self, color, emptySquares): # Returns empty squares on the board adjacent to enemy pieces
+		adjacentEmpty = [] # adjacent squares that are empty and on the board
+		enemyColor = 'black' if color == 'white' else 'white'
+		enemyPieces = [p for p in self.pieces if self.pieces[p].color == enemyColor]
+		for piece in enemyPieces:
+			for ad in self.adjacentDict[piece]: # access list of all adjacents
+				if ad in emptySquares and ad not in adjacentEmpty: 
+					adjacentEmpty.append(ad)
+		return adjacentEmpty
 
 	def getFlippable(self, position, color): # returns a list of postions that will be flipped given a move(which is ON the board and in an EMPTY square.
 		flippablePositions = []
@@ -138,6 +168,10 @@ class ChessBoard:
 				flippablePositions.extend(enemyList)
 		return flippablePositions # list of postions to be flipped
 
+
+	def addPiece(self, piece): # ONLY called if move passes availableMoves
+		self.pieces[piece.position] = piece  # we use position instead of ID since position does not change and will be used alot.
+
 class Piece:
 	def __init__(self, position, color, board):
 		self.position = position # this will never change in reverso
@@ -147,7 +181,6 @@ class Piece:
 		else:
 			raise ArithmeticError
 
-	
 	def changeColor(self):
 		if self.color == 'white':
 			self.color = 'black'
@@ -229,7 +262,7 @@ class RandomComputerPlayer(Player):
 		if len(availableMoves) == 0:
 			print(f"{self.color} has no moves!")
 		else:
-			move = availableMoves[randint(0,len(availableMoves)-1)] # minus one because randint is INCLUSIVE
+			move = choice(availableMoves) # minus one because randint is INCLUSIVE
 			self.makeMove(move, board)
 
 class MinimaxPlayer(Player):
@@ -247,15 +280,18 @@ class MinimaxPlayer(Player):
 		elif len(availableMoves) == 1:
 			move = availableMoves[0]
 			self.makeMove(move, board)
-		else:
-			simGame = deepcopy(game)
-			best = self.minimax(simGame, self.color, self.depth)
-			del simGame	
+		elif len(availableMoves) > 1:
+			prevPieces = deepcopy(board.pieces) # this is all we need to revert back to original state after running minimax simulation
+			best = self.minimax(game, self.color, self.depth)
+			board.pieces = prevPieces
+			del prevPieces
 			move = best['position']
 			if type(move) != tuple: #if it cannot find the next move
 				move = choice(availableMoves)
 				input(f"{self.color} can't find next move out of {len(availableMoves)}")
 			self.makeMove(move, board)
+		else:
+			raise ArithmeticError
 
 
 	def minimax(self, simGame, currentColor, depth):
@@ -267,8 +303,13 @@ class MinimaxPlayer(Player):
 		if currentColor == maxPlayer:
 			best = {'position': None, 'score': -math.inf}
 		else:
-			best = {'position': None, 'score': math.inf}
-		
+			best = {'positionN': one, 'score': math.inf}
+
+
+		#1. first we want to check if the previous move is a winner
+		# this is our base case
+		#we refer to otherColor to get previous move
+		#print(simGame.checkWinner(),simGame.winner, simGame.player1.getAdjustedScore(simGame.board),simGame.player2.getAdjustedScore(simGame.board), currentColor, otherColor) #DEBUGGING
 		simGame.checkWinner()
 		#if simGame.winner == otherColor: #this does not tell us if otherColor is maxplayer or not
 		if simGame.winner == simGame.getPlayerByColor(otherColor).name or depth == 0:
@@ -286,6 +327,7 @@ class MinimaxPlayer(Player):
 				return {'position': None, 'score': 0}
 		#3 loop
 		for availableMove in simGame.board.getAvailableMoves(currentColor):
+			#input(f'available moves: {simGame.board.getAvailableMoves(simGame.getPlayerByColor(currentColor))}')
 			# step 0: save the pieces so we don't have to reflip them
 			previousPieces = deepcopy(simGame.board.pieces)
 			# step 1: make a move, try that spot
@@ -383,9 +425,9 @@ class Game:
 			else:
 				self.winner = 'tie'
 				return 'tie'
-		return None
+		return False
 
-	def gameplay(self):
+	def gameplay(self, printBoard = True):
 		#print board
 		#get player's choice
 		#test if valid
@@ -395,10 +437,11 @@ class Game:
 		#return winner
 		turn = ['player 1','player 2'][randint(0,1)]
 		while self.winner == None:
-			self.board.printBoard()
-			print(f"{self.player1.color}/Player 1 score: {self.player1.getScore(self.board)}")
-			print(f"{self.player2.color}/Player 2 score: {self.player2.getScore(self.board)}")
-			print(f"It is {turn}'s turn")
+			if printBoard == True:
+				self.board.printBoard()
+				print(f"{self.player1.color}/Player 1 score: {self.player1.getScore(self.board)}")
+				print(f"{self.player2.color}/Player 2 score: {self.player2.getScore(self.board)}")
+				print(f"It is {turn}'s turn")
 			#player takes their turn
 			if turn == 'player 1':
 				self.player1.getMove(self.board, self)
@@ -406,9 +449,6 @@ class Game:
 				self.player2.getMove(self.board, self)
 			else:
 				raise ArithmeticError
-			self.board.printBoard()
-			print(f"{self.player1.color}/Player 1 score: {self.player1.getScore(self.board)}")
-			print(f"{self.player2.color}/Player 2 score: {self.player2.getScore(self.board)}")
-			if self.checkWinner(): #no need to return as checkWinner will update the game object directly
+			if self.checkWinner() in ['player 1','player 2','tie']: #no need to return as checkWinner will update the game object directly
 				return self.winner #returns to main program(play_reverso)
 			turn = 'player 1' if turn =='player 2' else 'player 2'
