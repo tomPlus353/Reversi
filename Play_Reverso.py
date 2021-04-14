@@ -30,7 +30,7 @@ def getPlayer(color, type):
                         except ValueError:
                                 continue
                 if choice == 0:
-                        return RandomComputerPlayer(color) 
+                        return AlphaBetaPlayer(color, difficulty=1) 
                 elif choice == 1:
                         return AlphaBetaPlayer(color) # default difficulty of 3
                 elif choice == 2:
@@ -84,3 +84,4 @@ def play():
 
 if __name__ == '__main__':
 	play()
+
