@@ -57,7 +57,7 @@ class ChessBoard:
 	def printBoard(self):
 		self.refreshBoard()
 		for row in self.board: 
-			print(" ".join(row))
+			print("".join(row))
 
 	def printPlayerOptions(self, availableMoves):
 		self.refreshBoard()
@@ -67,7 +67,7 @@ class ChessBoard:
 			copy[x][y] = str(counter)
 			counter += 1
 		for row in copy:
-			print(" ".join(row))
+			print("".join(row))
 		del copy
 
 
@@ -204,7 +204,7 @@ class Player:
 	def getAdjustedScore(self, board): # for minimax, to take into account strength of edges and corners, especially in the early and middle game
 		score = 0
 		remainingMoves = len([i for i in board.possiblePositions if i not in board.pieces])
-		endGame = True if remainingMoves <= int(len(board.possiblePositions)/3) else False
+		endGame = True if remainingMoves <= 10 else False
 		for piece in board.pieces:
 			if board.pieces[piece].color == self.color:
 				score += 1 if endGame == False else 2
@@ -212,11 +212,12 @@ class Player:
 					score += 8 if endGame == False else 2 # 9x the score for a corner outside of endgame/ same score in endgame
 				elif piece in board.edges:
 					score += 4 if endGame == False else 2 # 5x the score for an edge outside of endgame/ same score in endgame
-		#account for denying opponent moves
-		ownMoves = len(board.getAvailableMoves(self.color)) #this provides some benchmark to judge for opponents moves.
-		opponentColor = 'black' if self.color == 'white' else 'black'
-		opponentMoves = len(board.getAvailableMoves(opponentColor))
-		score += (ownMoves - opponentMoves) * 2 #reduces score if opponent has alot of moves and increases score if they have few
+		#account for denying opponent moves:
+		if not endGame:
+			ownMoves = len(board.getAvailableMoves(self.color)) #this provides some benchmark to judge for opponents moves.
+			opponentColor = 'black' if self.color == 'white' else 'black'
+			opponentMoves = len(board.getAvailableMoves(opponentColor))
+			score += (ownMoves - opponentMoves) * 2 #reduces score if opponent has alot of moves and increases score if they have few
 		return score
 
 class RandomComputerPlayer(Player):
@@ -254,6 +255,7 @@ class MinimaxPlayer(Player):
 			move = best['position']
 			if type(move) != tuple: #if it cannot find the next move
 				move = choice(availableMoves)
+				print("best = ", best)
 				input(f"{self.color} can't find next move out of {len(availableMoves)}")
 			self.makeMove(move, board)
 
